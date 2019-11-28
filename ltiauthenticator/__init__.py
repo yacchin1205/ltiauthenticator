@@ -8,6 +8,7 @@ from jupyterhub.handlers import BaseHandler
 from jupyterhub.utils import url_path_join
 
 from oauthlib.oauth1.rfc5849 import signature
+from oauthlib.common import safe_string_equals
 from collections import OrderedDict
 
 class LTILaunchValidator:
@@ -78,9 +79,9 @@ class LTILaunchValidator:
             else:
                 args_list.append((key, values))
 
-        base_string = signature.construct_base_string(
+        base_string = signature.signature_base_string(
             'POST',
-            signature.normalize_base_string_uri(launch_url),
+            signature.base_string_uri(launch_url),
             signature.normalize_parameters(
                 signature.collect_parameters(body=args_list, headers=headers)
             )
@@ -89,7 +90,7 @@ class LTILaunchValidator:
         consumer_secret = self.consumers[args['oauth_consumer_key']]
 
         sign = signature.sign_hmac_sha1(base_string, consumer_secret, None)
-        is_valid = signature.safe_string_equals(sign, args['oauth_signature'])
+        is_valid = safe_string_equals(sign, args['oauth_signature'])
 
         if not is_valid:
             raise web.HTTPError(401, "Invalid oauth_signature")
@@ -147,7 +148,7 @@ class LTIAuthenticator(Authenticator):
                 handler.request.headers,
                 args
         ):
-            # Before we return lti_user_id, check to see if a canvas_custom_user_id was sent. 
+            # Before we return lti_user_id, check to see if a canvas_custom_user_id was sent.
             # If so, this indicates two things:
             # 1. The request was sent from Canvas, not edX
             # 2. The request was sent from a Canvas course not running in anonymous mode
